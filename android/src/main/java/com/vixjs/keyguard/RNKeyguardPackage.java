@@ -13,7 +13,10 @@ import com.facebook.react.bridge.JavaScriptModule;
 public class RNKeyguardPackage implements ReactPackage {
     @Override
     public List<NativeModule> createNativeModules(ReactApplicationContext reactContext) {
-      return Arrays.<NativeModule>asList(new RNKeyguardModule(reactContext));
+      //return Arrays.<NativeModule>asList(new RNKeyguardModule(reactContext));
+      List<NativeModule> modules = new ArrayList<>();
+      modules.add(new RNKeyguardModule(reactContext));
+      return modules;
     }
 
     //Deprecated RN 0.47
