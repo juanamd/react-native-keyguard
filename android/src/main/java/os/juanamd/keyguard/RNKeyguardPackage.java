@@ -1,4 +1,4 @@
-package com.vixjs.keyguard;
+package os.juanamd.keyguard;
 
 import java.util.ArrayList;
 import java.util.Collections;

@@ -1,7 +1,7 @@
 
 {
   "name": "react-native-keyguard",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Check if Android device screen is locked",
   "main": "index.js",
   "scripts": {
