@@ -2,6 +2,8 @@ package os.juanamd.keyguard;
 
 import android.app.KeyguardManager;
 import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
@@ -9,6 +11,8 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 
 public class RNKeyguardModule extends ReactContextBaseJavaModule {
+    private IntentFilter intentFilter;
+
     public RNKeyguardModule(ReactApplicationContext reactContext) {
         super(reactContext);
     }
@@ -28,5 +32,13 @@ public class RNKeyguardModule extends ReactContextBaseJavaModule {
 		catch (Exception e) {
 			promise.reject(e);
 		}
+    }
+
+    @ReactMethod
+    public void registerUserPresentReceiver() {
+        if (this.intentFilter == null) {
+            this.intentFilter = new IntentFilter(Intent.ACTION_USER_PRESENT);
+		    this.getReactApplicationContext().registerReceiver(new UserPresentReceiver(), this.intentFilter);
+        }
     }
 }
