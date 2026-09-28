@@ -5,30 +5,26 @@ import android.content.Context;
 import android.content.Intent;
 import android.util.Log;
 
-import com.facebook.react.ReactApplication;
-import com.facebook.react.bridge.Arguments;
-import com.facebook.react.bridge.ReactContext;
-import com.facebook.react.modules.core.DeviceEventManagerModule;
-
 public class UserPresentReceiver extends BroadcastReceiver {
-	public static String USER_PRESENT_EVENT = "userPresent";
+	private static final String TAG = "RNKeyguard";
 
-	@Override
-	public void onReceive(final Context context, final Intent intent) {
-		Log.d("RNKeyguard", "User present action received");
-		if (intent.getAction().equals(Intent.ACTION_USER_PRESENT)) {
-			try {
-				this.getReactContext(context)
-					.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-					.emit(USER_PRESENT_EVENT, Arguments.createMap());
-			} catch (Exception e) {
-				Log.e("RNKeyguard", "Error dispatching user present event", e);
-			}
-		}
+	private final RNKeyguardModule module;
+
+	public UserPresentReceiver(RNKeyguardModule module) {
+		this.module = module;
 	}
 
-	protected ReactContext getReactContext(final Context context) {
-		ReactApplication reactApp = (ReactApplication) context.getApplicationContext();
-		return reactApp.getReactNativeHost().getReactInstanceManager().getCurrentReactContext();
+	@Override
+	public void onReceive(Context context, Intent intent) {
+		if (!Intent.ACTION_USER_PRESENT.equals(intent.getAction())) {
+			return;
+		}
+
+		Log.d(TAG, "User present action received");
+		try {
+			module.emitUserPresent();
+		} catch (Exception e) {
+			Log.e(TAG, "Error dispatching user present event", e);
+		}
 	}
 }

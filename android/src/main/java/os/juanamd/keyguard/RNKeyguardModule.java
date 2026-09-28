@@ -4,91 +4,115 @@ import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.util.Log;
 
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.module.annotations.ReactModule;
 
-public class RNKeyguardModule extends ReactContextBaseJavaModule {
+@ReactModule(name = RNKeyguardModule.NAME)
+public class RNKeyguardModule extends NativeRNKeyguardSpec {
+	public static final String NAME = "RNKeyguard";
 	private static final String TAG = "RNKeyguard";
 
 	private UserPresentReceiver receiver;
 
 	public RNKeyguardModule(ReactApplicationContext reactContext) {
 		super(reactContext);
+		registerReceiver();
 	}
 
 	@Override
 	public String getName() {
-		return TAG;
+		return NAME;
 	}
 
-	@ReactMethod
-	public void isLocked(final Promise promise) {
+	@Override
+	public void isLocked(Promise promise) {
 		try {
-			ReactApplicationContext context = this.getReactApplicationContext();
-			KeyguardManager kwManager = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
-			promise.resolve(kwManager.isKeyguardLocked());
-			Log.d(TAG, "Is locked: " + kwManager.isKeyguardLocked());
+			ReactApplicationContext context = getReactApplicationContext();
+			KeyguardManager keyguardMgr = (KeyguardManager) context.getSystemService(Context.KEYGUARD_SERVICE);
+			if (keyguardMgr == null) {
+				promise.reject("E_KEYGUARD_MANAGER", "KeyguardManager unavailable");
+				return;
+			}
+
+			promise.resolve(keyguardMgr.isKeyguardLocked());
 		} catch (Exception e) {
-			promise.reject(e);
 			Log.e(TAG, "Error on isLocked()", e);
-		}
-	}
-
-	@ReactMethod
-	public void registerUserPresentReceiver(final Promise promise) {
-		if (this.receiver != null) {
-			promise.resolve(false);
-		} else {
-			ReactApplicationContext context = this.getReactApplicationContext();
-			if (context == null) {
-				promise.reject("Null react context");
-			} else {
-				try {
-					this.receiver = new UserPresentReceiver();
-					context.registerReceiver(this.receiver, new IntentFilter(Intent.ACTION_USER_PRESENT));
-					promise.resolve(true);
-					Log.d(TAG, "Registered user present receiver");
-				} catch (Exception e) {
-					Log.e(TAG, "Error on registerUserPresentReceiver()", e);
-					promise.reject(e);
-				}
-			}
-		}
-	}
-
-	@ReactMethod
-	public void unregisterUserPresentReceiver(final Promise promise) {
-		if (this.receiver == null) {
-			promise.resolve(false);
-		} else {
-			ReactApplicationContext context = this.getReactApplicationContext();
-			if (context == null) {
-				promise.reject("Null react context");
-			} else {
-				try {
-					context.unregisterReceiver(this.receiver);
-					this.receiver = null;
-					promise.resolve(true);
-					Log.d(TAG, "Unregistered user present receiver");
-				} catch (Exception e) {
-					Log.e(TAG, "Error on unregisterUserPresentReceiver()", e);
-					promise.reject(e);
-				}
-			}
+			promise.reject(e);
 		}
 	}
 
 	@Override
-	public void onCatalystInstanceDestroy() {
-		super.onCatalystInstanceDestroy();
-		ReactApplicationContext context = this.getReactApplicationContext();
-		if (context != null && this.receiver != null) {
-			context.unregisterReceiver(this.receiver);
-			Log.d(TAG, "Unregistered receiver on destroy");
+	public void registerUserPresentReceiver(Promise promise) {
+		try {
+			promise.resolve(registerReceiver());
+		} catch (Exception e) {
+			Log.e(TAG, "Error on registerUserPresentReceiver()", e);
+			promise.reject(e);
 		}
+	}
+
+	@Override
+	public void unregisterUserPresentReceiver(Promise promise) {
+		try {
+			promise.resolve(unregisterReceiver());
+		} catch (Exception e) {
+			Log.e(TAG, "Error on unregisterUserPresentReceiver()", e);
+			promise.reject(e);
+		}
+	}
+
+	private synchronized boolean registerReceiver() {
+		if (receiver != null) {
+			return false;
+		}
+
+		UserPresentReceiver newReceiver = new UserPresentReceiver(this);
+		IntentFilter filter = new IntentFilter(Intent.ACTION_USER_PRESENT);
+		ReactApplicationContext context = getReactApplicationContext();
+
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			context.registerReceiver(newReceiver, filter, Context.RECEIVER_EXPORTED);
+		} else {
+			context.registerReceiver(newReceiver, filter);
+		}
+
+		receiver = newReceiver;
+		Log.d(TAG, "Registered user present receiver");
+		return true;
+	}
+
+	private synchronized boolean unregisterReceiver() {
+		if (receiver == null) {
+			return false;
+		}
+
+		ReactApplicationContext context = getReactApplicationContext();
+		context.unregisterReceiver(receiver);
+		receiver = null;
+		Log.d(TAG, "Unregistered user present receiver");
+		return true;
+	}
+
+	void emitUserPresent() {
+		WritableMap event = Arguments.createMap();
+		event.putBoolean("userPresent", true);
+		emitOnUserPresent(event);
+	}
+
+	@Override
+	public void invalidate() {
+		try {
+			unregisterReceiver();
+		} catch (Exception e) {
+			Log.e(TAG, "Error unregistering user present receiver", e);
+		}
+
+		super.invalidate();
 	}
 }

@@ -1,5 +1,3 @@
-import { NativeModules } from 'react-native';
+import NativeRNKeyguard from './specs/NativeRNKeyguard';
 
-const { RNKeyguard } = NativeModules;
-
-export default RNKeyguard;
+export default NativeRNKeyguard;
